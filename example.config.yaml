@@ -1,0 +1,12 @@
+api_key: "your_api_key"
+api_secret: "your_api_secret"
+
+symbol: "XRP_USDT"
+buy_amount: 5
+profit_margin: 1.05
+max_exposure: 500
+
+check_interval: 60
+database_file: "orders.db"
+
+min_usdt_balance: 5
