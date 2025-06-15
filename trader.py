@@ -1,4 +1,5 @@
 import gate_api
+from gate_api import Order
 from decimal import Decimal
 import yaml
 import time
@@ -18,8 +19,12 @@ class GridTrader:
         self.buy_amount = Decimal(str(self.config['buy_amount']))
         self.profit_margin = Decimal(str(self.config['profit_margin']))
         self.max_exposure = Decimal(str(self.config['max_exposure']))
+        self.max_buy_price = Decimal(str(self.config['max_buy_price']))
+        self.moving_average_candles = int(self.config['moving_average_candles'])
+        self.sell_ma_threshold = Decimal(str(self.config['sell_ma_threshold']))
         self.check_interval = self.config['check_interval']
         self.min_usdt_balance = Decimal(str(self.config['min_usdt_balance']))
+        self.min_trade_usdt = Decimal(str(self.config['min_trade_usdt']))
 
         self.db = OrderDB(self.config['database_file'])
         self.setup_api()
@@ -39,21 +44,50 @@ class GridTrader:
         ticker = self.spot_api.list_tickers(currency_pair=self.symbol)
         return Decimal(ticker[0].last)
 
+    def get_moving_average(self):
+        candles = self.spot_api.list_candlesticks(
+            currency_pair=self.symbol, interval="5m", limit=self.moving_average_candles)
+        closes = [Decimal(candle[2]) for candle in candles]  # candle[2] is close price
+        return sum(closes) / len(closes)
+
     def place_buy_order(self, usdt_to_use):
         price = self.get_current_price()
         amount = (usdt_to_use / price).quantize(Decimal('0.0001'))
+
+        # Double-check trade value against min trade USDT
+        if (amount * price) < self.min_trade_usdt:
+            self.logger.warning(f"Buy order below min trade size: {amount} XRP ({amount * price} USDT)")
+            return None, None
+
         self.logger.info(f"Placing market BUY: {amount} XRP at {price}")
-        buy_order = self.spot_api.create_order(self.symbol, 'buy', amount=str(amount), price=None, type='market')
+
+        buy_order = Order(
+            currency_pair=self.symbol,
+            side='buy',
+            amount=str(amount),
+            price=None,
+            type='market',
+            time_in_force='ioc'
+        )
+        result = self.spot_api.create_order(buy_order)
         time.sleep(1)
-        actual_trade = self.spot_api.list_user_trades(self.symbol, order_id=buy_order.id)[0]
+        actual_trade = self.spot_api.list_user_trades(self.symbol, order_id=result.id)[0]
         executed_price = Decimal(actual_trade.price)
         return executed_price, Decimal(actual_trade.amount)
 
-    def place_sell_order(self, buy_price, amount):
-        sell_price = (buy_price * self.profit_margin).quantize(Decimal('0.0001'))
+    def place_sell_order(self, sell_price, amount):
+        sell_price = sell_price.quantize(Decimal('0.0001'))
         self.logger.info(f"Placing limit SELL: {amount} XRP at {sell_price}")
-        sell_order = self.spot_api.create_order(self.symbol, 'sell', amount=str(amount), price=str(sell_price), type='limit')
-        return sell_price, sell_order.id
+
+        sell_order = Order(
+            currency_pair=self.symbol,
+            side='sell',
+            amount=str(amount),
+            price=str(sell_price),
+            type='limit'
+        )
+        result = self.spot_api.create_order(sell_order)
+        return sell_price, result.id
 
     def check_filled_orders(self):
         open_orders = self.db.get_open_orders()
@@ -76,16 +110,28 @@ class GridTrader:
                 usdt_balance = self.get_balance('USDT')
                 self.logger.info(f"Available USDT balance: {usdt_balance}")
 
-                if exposure < self.max_exposure and usdt_balance > self.min_usdt_balance:
+                current_price = self.get_current_price()
+
+                # BUY LOGIC
+                if current_price <= self.max_buy_price and exposure < self.max_exposure and usdt_balance > self.min_usdt_balance:
                     available_for_trade = min(self.buy_amount, usdt_balance - self.min_usdt_balance)
-                    if available_for_trade >= Decimal('5'):
+                    if available_for_trade >= self.min_trade_usdt:
                         buy_price, amount_bought = self.place_buy_order(available_for_trade)
-                        sell_price, sell_order_id = self.place_sell_order(buy_price, amount_bought)
-                        self.db.record_order(float(buy_price), float(amount_bought), float(sell_price), sell_order_id)
+                        if buy_price is not None:
+                            # SELL LOGIC - dynamic sell price
+                            ma_price = self.get_moving_average()
+                            smart_sell_price = buy_price * self.profit_margin
+                            if current_price >= ma_price * self.sell_ma_threshold:
+                                smart_sell_price = current_price
+
+                            sell_price, sell_order_id = self.place_sell_order(smart_sell_price, amount_bought)
+                            self.db.record_order(float(buy_price), float(amount_bought), float(sell_price), sell_order_id)
+                        else:
+                            self.logger.info("Skipped due to trade below minimum size.")
                     else:
-                        self.logger.info("Not enough free USDT to place even minimum order.")
+                        self.logger.info("Not enough free USDT to place minimum trade.")
                 else:
-                    self.logger.info("Max exposure reached or insufficient balance, waiting...")
+                    self.logger.info("Buy conditions not met. Waiting...")
 
             except Exception as e:
                 self.logger.error(f"Main loop error: {e}")

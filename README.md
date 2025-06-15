@@ -47,4 +47,7 @@ You should have the following files:
 ### 3️⃣ Install required Python libraries
 
 ```bash
+python3 -m venv gridbot-env
+source gridbot-env/bin/activate
 pip install -r requirements.txt
+python main.py
