@@ -1,5 +1,5 @@
-from trader import GridTrader
+from trader import MomentumTrader
 
 if __name__ == "__main__":
-    bot = GridTrader("config.yaml")
+    bot = MomentumTrader("config.yaml")
     bot.run()

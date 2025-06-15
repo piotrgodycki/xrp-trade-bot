@@ -1,11 +1,11 @@
 import logging
 
 def setup_logger():
-    logger = logging.getLogger("GridBot")
+    logger = logging.getLogger("MomentumBot")
     logger.setLevel(logging.INFO)
     formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
 
-    fh = logging.FileHandler("gridbot.log")
+    fh = logging.FileHandler("momentum_bot.log")
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
