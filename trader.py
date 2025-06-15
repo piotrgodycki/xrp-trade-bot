@@ -8,7 +8,7 @@ class SymbolTrader:
         self.api_key = api_key
         self.api_secret = api_secret
         self.symbol = symbol_cfg['symbol']
-        self.trade_amount = Decimal(str(symbol_cfg['trade_amount']))
+        self.trade_percent = Decimal(str(symbol_cfg['trade_percent']))
         self.buy_threshold = Decimal(str(symbol_cfg['buy_threshold']))
         self.sell_threshold = Decimal(str(symbol_cfg['sell_threshold']))
         self.check_interval = shared_cfg['check_interval']
@@ -36,14 +36,22 @@ class SymbolTrader:
         change = (curr_close - prev_close) / prev_close
         return change, curr_close
 
-    def place_market_buy(self, usdt_to_use):
-        price = self.get_current_price()
-        amount = (usdt_to_use / price).quantize(Decimal('0.0001'))
-        trade_value = amount * price
-
-        if trade_value < self.min_trade_usdt:
-            self.logger.log(self.symbol, "WARNING", "BUY too small")
+    def place_market_buy(self):
+        usdt_balance = self.get_balance('USDT')
+        available_for_trade = usdt_balance - self.min_usdt_balance
+        if available_for_trade <= 0:
+            self.logger.log(self.symbol, "WARNING", "No USDT available")
             return
+
+        dynamic_usdt_to_use = (available_for_trade * self.trade_percent / Decimal('100')).quantize(Decimal('0.01'))
+
+        if dynamic_usdt_to_use < self.min_trade_usdt:
+            self.logger.log(self.symbol, "WARNING", f"BUY skipped — below min trade value: {dynamic_usdt_to_use}")
+            return
+
+        price = self.get_current_price()
+        amount = (dynamic_usdt_to_use / price).quantize(Decimal('0.0001'))
+        trade_value = amount * price
 
         order = Order(
             currency_pair=self.symbol,
@@ -81,20 +89,20 @@ class SymbolTrader:
     def run(self):
         while True:
             try:
+                token = self.symbol.split("_")[0]
+                balance = self.get_balance(token)
                 change, current_price = self.get_recent_change()
+
                 self.logger.log(self.symbol, "INFO", f"Δ1m: {change*100:.2f}% | Price: {current_price}")
 
-                if change >= self.sell_threshold:
+                if change >= self.sell_threshold and balance > Decimal('0.01'):
                     self.logger.log(self.symbol, "INFO", "SELL SIGNAL")
                     self.place_market_sell()
 
                 elif change <= self.buy_threshold:
-                    usdt_balance = self.get_balance('USDT')
-                    if usdt_balance > (self.trade_amount + self.min_usdt_balance):
-                        self.logger.log(self.symbol, "INFO", "BUY SIGNAL")
-                        self.place_market_buy(self.trade_amount)
-                    else:
-                        self.logger.log(self.symbol, "WARNING", "Not enough USDT")
+                    self.logger.log(self.symbol, "INFO", "BUY SIGNAL")
+                    self.place_market_buy()
+
                 else:
                     self.logger.log(self.symbol, "INFO", "No signal")
 

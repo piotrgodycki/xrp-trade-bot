@@ -3,20 +3,30 @@ api_secret: "your_api_secret"
 
 symbols:
   - symbol: "XRP_USDT"
-    trade_amount: 20
+    trade_percent: 5
     buy_threshold: -0.01
     sell_threshold: 0.005
 
   - symbol: "XRP5L_USDT"
-    trade_amount: 10
+    trade_percent: 5
     buy_threshold: -0.02
     sell_threshold: 0.01
 
   - symbol: "XRP5S_USDT"
-    trade_amount: 10
+    trade_percent: 5
+    buy_threshold: -0.02
+    sell_threshold: 0.01
+
+  - symbol: "ZBAI_USDT"
+    trade_percent: 5
+    buy_threshold: -0.02
+    sell_threshold: 0.01
+
+  - symbol: "CALCIFY_USDT"
+    trade_percent: 5
     buy_threshold: -0.02
     sell_threshold: 0.01
 
 check_interval: 10
-min_usdt_balance: 10
-min_trade_usdt: 3
+min_usdt_balance: 3
+min_trade_usdt: 2
