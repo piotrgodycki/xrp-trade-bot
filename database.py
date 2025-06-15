@@ -24,12 +24,6 @@ class OrderDB:
         c.execute("UPDATE orders SET status=? WHERE sell_order_id=?", (status, sell_order_id))
         self.conn.commit()
 
-    def get_open_exposure(self):
-        c = self.conn.cursor()
-        c.execute("SELECT SUM(buy_price * amount) FROM orders WHERE status='open'")
-        result = c.fetchone()[0]
-        return result if result else 0
-
     def get_open_orders(self):
         c = self.conn.cursor()
         c.execute("SELECT sell_order_id FROM orders WHERE status='open'")
