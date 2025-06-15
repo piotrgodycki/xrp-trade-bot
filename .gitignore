@@ -1,4 +1,5 @@
 gridbot-env
 __pycache__
 *.log
+logs
 config.yaml
