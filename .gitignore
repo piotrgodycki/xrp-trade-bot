@@ -5,3 +5,4 @@ logs
 config.yaml
 *.db
 *.sqlite3
+signals.json
