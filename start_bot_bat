@@ -1,0 +1,4 @@
+@echo off
+echo Starting Grid Trading Bot V3.0...
+python main.py
+pause
