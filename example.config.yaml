@@ -2,31 +2,56 @@ api_key: "your_api_key"
 api_secret: "your_api_secret"
 
 symbols:
+  - symbol: "ETH_USDT"
+    trade_percent: 25 # Higher allocation for ETH's stability
+    atr_period: 8 # Balanced period for ETH's volatility
+    atr_multiplier: 0.7 # Conservative multiplier for major asset
+    ma_period: 20 # Standard trend following
+    min_expected_profit: 0.8
+
   - symbol: "XRP_USDT"
-    trade_percent: 5
-    buy_threshold: -0.01
-    sell_threshold: 0.005
+    trade_percent: 25 # Equal weight to ETH
+    atr_period: 6 # Slightly faster for XRP's movements
+    atr_multiplier: 0.8 # More aggressive for higher volatility
+    ma_period: 15 # Faster trend detection
+    min_expected_profit: 0.7
 
   - symbol: "XRP5L_USDT"
-    trade_percent: 5
-    buy_threshold: -0.02
-    sell_threshold: 0.01
+    trade_percent: 15 # Lower allocation due to leverage
+    atr_period: 4 # Quick reaction time
+    atr_multiplier: 0.6 # Conservative due to leverage
+    ma_period: 12 # Fast trend detection
+    min_expected_profit: 1.2 # Higher profit target for leveraged position
 
   - symbol: "XRP5S_USDT"
-    trade_percent: 5
-    buy_threshold: -0.02
-    sell_threshold: 0.01
+    trade_percent: 15 # Equal to long leverage allocation
+    atr_period: 4 # Quick reaction time
+    atr_multiplier: 0.6 # Conservative due to leverage
+    ma_period: 12 # Fast trend detection
+    min_expected_profit: 1.2 # Higher profit target for leveraged position
 
   - symbol: "ZBAI_USDT"
-    trade_percent: 5
-    buy_threshold: -0.02
-    sell_threshold: 0.01
+    trade_percent: 30 # Increased allocation for higher volatility
+    atr_period: 3 # Shorter period for faster reaction
+    atr_multiplier: 0.8 # More aggressive position sizing
+    ma_period: 15 # Faster trend following
+    min_expected_profit: 0.8 # Lower threshold for quicker profits
 
   - symbol: "CALCIFY_USDT"
-    trade_percent: 5
-    buy_threshold: -0.02
-    sell_threshold: 0.01
+    trade_percent: 25 # Balanced allocation
+    atr_period: 4 # Quick adaptability
+    atr_multiplier: 0.85 # Strong move confirmation
+    ma_period: 15 # Faster trend detection
+    min_expected_profit: 0.7
+
+  - symbol: "SWAY_USDT"
+    trade_percent: 25 # Balanced allocation
+    atr_period: 4 # Quick adaptability
+    atr_multiplier: 0.85 # Strong move confirmation
+    ma_period: 15 # Faster trend detection
+    min_expected_profit: 0.7
 
 check_interval: 10
-min_usdt_balance: 3
-min_trade_usdt: 2
+min_usdt_balance: 0 # Minimum USDT balance to start trading
+min_trade_usdt: 0 # Minimum amount to trade in USDT
+enable_follower: false
