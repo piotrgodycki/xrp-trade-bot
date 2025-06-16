@@ -12,10 +12,10 @@ class SymbolTrader:
         self.atr_period = int(symbol_cfg.get('atr_period', 10))
         self.atr_multiplier = Decimal(str(symbol_cfg.get('atr_multiplier', 0.7)))
         self.ma_period = int(symbol_cfg.get('ma_period', 20))
+        self.min_expected_profit = Decimal(str(symbol_cfg.get('min_expected_profit', 1.0)))
         self.check_interval = shared_cfg['check_interval']
         self.min_usdt_balance = Decimal(str(shared_cfg['min_usdt_balance']))
         self.min_trade_usdt = Decimal(str(shared_cfg['min_trade_usdt']))
-        self.min_expected_profit = Decimal(str(symbol_cfg.get('min_expected_profit', 1)))
         self.logger = logger
 
         self.setup_api()
@@ -77,6 +77,15 @@ class SymbolTrader:
         self.spot_api.create_order(order)
         self.logger.log(self.symbol, "INFO", f"SELL EXECUTED {amount} at {price}")
 
+    def calculate_total_portfolio_value(self):
+        token = self.symbol.split("_")[0]
+        usdt_balance = self.get_balance("USDT")
+        token_balance = self.get_balance(token)
+        token_price = self.get_current_price()
+
+        total_value = usdt_balance + (token_balance * token_price)
+        return total_value
+
     def run(self):
         while True:
             try:
@@ -95,35 +104,51 @@ class SymbolTrader:
                 usdt_balance = self.get_balance("USDT")
                 available_for_trade = usdt_balance - self.min_usdt_balance
 
-                if available_for_trade <= 0:
-                    self.logger.log(self.symbol, "WARNING", "No USDT available for trade")
-                    time.sleep(self.check_interval)
-                    continue
+                portfolio_before = self.calculate_total_portfolio_value()
 
-                dynamic_usdt_to_use = (available_for_trade * self.trade_percent / Decimal('100')).quantize(Decimal('0.01'))
-                if dynamic_usdt_to_use < self.min_trade_usdt:
-                    self.logger.log(self.symbol, "WARNING", f"BUY skipped — below min trade value: {dynamic_usdt_to_use}")
-                    time.sleep(self.check_interval)
-                    continue
+                # BUY section
+                if change <= buy_threshold:
+                    if available_for_trade <= 0:
+                        self.logger.log(self.symbol, "WARNING", "No USDT available for trade")
+                        time.sleep(self.check_interval)
+                        continue
 
-                amount_to_trade = (dynamic_usdt_to_use / price).quantize(Decimal('0.0001'))
-                expected_profit = amount_to_trade * atr
+                    dynamic_usdt_to_use = (available_for_trade * self.trade_percent / Decimal('100')).quantize(Decimal('0.01'))
 
-                self.logger.log(self.symbol, "INFO", f"Expected Profit Calculation: {expected_profit:.4f} USDT")
+                    if dynamic_usdt_to_use < self.min_trade_usdt:
+                        self.logger.log(self.symbol, "WARNING", f"BUY skipped — below min trade value: {dynamic_usdt_to_use}")
+                        time.sleep(self.check_interval)
+                        continue
 
-                if expected_profit < self.min_expected_profit:
-                    self.logger.log(self.symbol, "INFO", "Signal skipped — profit below $1")
-                    time.sleep(self.check_interval)
-                    continue
+                    amount_to_trade = (dynamic_usdt_to_use / price).quantize(Decimal('0.0001'))
+                    expected_profit_buy = amount_to_trade * atr
 
-                if change >= sell_threshold and balance > Decimal('0.01'):
-                    self.logger.log(self.symbol, "INFO", "******************** SELL SIGNAL ********************")
-                    self.place_market_sell(balance)
+                    self.logger.log(self.symbol, "INFO", f"Expected BUY Profit: {expected_profit_buy:.4f} USDT")
 
-                elif change <= buy_threshold:
+                    if expected_profit_buy < self.min_expected_profit:
+                        self.logger.log(self.symbol, "INFO", f"BUY skipped — profit below ${self.min_expected_profit}")
+                        time.sleep(self.check_interval)
+                        continue
+
                     self.logger.log(self.symbol, "INFO", "******************** BUY SIGNAL ********************")
                     self.logger.log(self.symbol, "INFO", f"BUY AMOUNT SIGNAL — Buying {amount_to_trade} {token} worth {dynamic_usdt_to_use} USDT")
                     self.place_market_buy(amount_to_trade)
+
+                # SELL section
+                elif change >= sell_threshold and balance > Decimal('0.01'):
+
+                    sell_value = balance * price
+                    expected_portfolio_after = usdt_balance + sell_value
+
+                    self.logger.log(self.symbol, "INFO", f"Portfolio before: {portfolio_before:.4f}, After SELL: {expected_portfolio_after:.4f}")
+
+                    if expected_portfolio_after < portfolio_before + self.min_expected_profit:
+                        self.logger.log(self.symbol, "INFO", f"SELL skipped — portfolio value would not increase by ${self.min_expected_profit}")
+                        time.sleep(self.check_interval)
+                        continue
+
+                    self.logger.log(self.symbol, "INFO", "******************** SELL SIGNAL ********************")
+                    self.place_market_sell(balance)
 
                 else:
                     self.logger.log(self.symbol, "INFO", "No signal")

@@ -20,6 +20,7 @@ symbol_colors = {
     "XRP5S": LogColors.CYAN,
     "ZBAI": LogColors.GRAY,
     "CALCIFY": LogColors.PURPLE,
+    "SWAY": LogColors.CYAN,
 }
 
 class LoggerController:
