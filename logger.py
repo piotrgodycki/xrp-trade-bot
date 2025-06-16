@@ -37,10 +37,10 @@ class LoggerController:
             upper_msg = message.upper()
             if "SELL" in upper_msg:
                 color = LogColors.RED
-                console_entry = f"{color}{'*' * 20} SELL SIGNAL {message} {'*' * 20}{LogColors.RESET}"
+                console_entry = f"{color}{'*' * 10} SELL SIGNAL {message} {'*' * 10}{LogColors.RESET}"
             elif "BUY" in upper_msg:
                 color = LogColors.GREEN
-                console_entry = f"{color}{'*' * 20} BUY SIGNAL {message} {'*' * 20}{LogColors.RESET}"
+                console_entry = f"{color}{'*' * 10} BUY SIGNAL {message} {'*' * 10}{LogColors.RESET}"
             else:
                 # Default color per symbol
                 color = symbol_colors.get(symbol.split("_")[0], LogColors.RESET)
