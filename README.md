@@ -37,6 +37,7 @@ git clone https://github.com/yourusername/xrp-bot.git
 cd xrp-bot
 
 # Create and activate virtual environment
+cd python-bot
 python3 -m venv gridbot-env
 source gridbot-env/bin/activate  # On Windows use: gridbot-env\Scripts\activate
 

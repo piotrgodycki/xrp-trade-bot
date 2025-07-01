@@ -1,27 +1,2 @@
-# Virtual environment directory
-gridbot-env
-venv
-
-# Python bytecode cache
-__pycache__
-
-# Logs directory
-*.log
-logs
-
-# Configuration file with sensitive API keys
-config.yaml
-
-# SQLite database files
-*.db
-*.sqlite3
-
-# Trading signals data
-signals.json
-
-# PyInstaller build directory
-build
-dist
-
-# PyInstaller spec file
-main.spec
+node_modules/
+dist/
